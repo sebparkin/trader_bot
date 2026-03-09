@@ -208,9 +208,9 @@ st.rerun()
 def bot_schedule_loop():
 
     for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']:
-        getattr(schedule.every(), day).at("14:31").do(traders["AAPL"].open_position)
-        getattr(schedule.every(), day).at("14:31").do(traders["MSFT"].open_position)
-        getattr(schedule.every(), day).at("20:45").do(traders["AAPL"].close_position)
+        getattr(schedule.every(), day).at("14:31").do(traders["AAPL"].open_position())
+        getattr(schedule.every(), day).at("14:31").do(traders["MSFT"].open_position())
+        getattr(schedule.every(), day).at("20:45").do(traders["AAPL"].close_position())
 
     while True:
         schedule.run_pending()
