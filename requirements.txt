@@ -9,3 +9,4 @@ yfinance
 numpy
 scikit-learn
 schedule
+alpaca
