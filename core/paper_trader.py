@@ -4,7 +4,7 @@ from alpaca.trading.enums import OrderSide
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestQuoteRequest
 import schedule, time
-from datetime import timezone, datetime
+from datetime import datetime
 import pytz
 from core.trading_lstm import TradingLTSM
 

@@ -9,4 +9,7 @@ yfinance
 numpy
 scikit-learn
 schedule
-alpaca
+alpaca-py
+awkward
+cramjam
+xxhash
