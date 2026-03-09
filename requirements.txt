@@ -3,9 +3,7 @@ pandas
 torch
 joblib
 pytz
-datetime
 plotly
-time
 schedule
 yfinance
 numpy
