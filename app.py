@@ -16,7 +16,7 @@ from core.constants import *
 ET = pytz.timezone("America/New_York")
 
 st.set_page_config(
-    page_title = "Trading Bot Dashborad",
+    page_title = "Trading Bot Dashboard",
     page_icon =  "🚀",
     layout = "wide"
 )
@@ -108,7 +108,7 @@ def get_prediction_now(ticker):
         return None, None, str(e)
     
 
-st.title("📈 Trading Bot Dashboard")
+st.title("🚀 Trading Bot Dashboard")
 st.caption(f"Last refreshed: {datetime.now(ET).strftime('%Y-%m-%d %H:%M:%S ET')}")
 
 # Account metrics
@@ -138,16 +138,11 @@ st.plotly_chart(fig, width='stretch')
 st.divider()
 
 # ---- Per-ticker sections ----
-TICKER_COLORS = {'AAPL': '#555555', 'MSFT': '#00A4EF'}
+TICKER_COLORS = {'AAPL': "#B93939", 'MSFT': '#00A4EF'}
 
 for ticker in tickers:
     color = TICKER_COLORS.get(ticker, '#888888')
-    st.markdown(f"## :{color.replace('#','')}[{ticker}]", 
-                unsafe_allow_html=True)
-    
-    # Use a colored header instead since markdown color is limited
-    st.markdown(f"<h2 style='color:{color}'>{ticker}</h2>", 
-                unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:{color}'>{ticker}</h2>", unsafe_allow_html=True)
 
     pred, date_used, err = get_prediction_now(ticker)
     position             = get_position(ticker)
