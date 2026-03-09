@@ -8,3 +8,4 @@ schedule
 yfinance
 numpy
 scikit-learn
+schedule
