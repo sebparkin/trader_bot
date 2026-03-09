@@ -91,13 +91,13 @@ class TradingLTSM(nn.Module):
 
         return
 
-    def get_yesterdays_prediction(self, yf_ticker):
+    def get_yesterdays_prediction(self, yf_ticker, scaler):
         """
         Fetch yesterdays hourly ticker bars from yfinance and make a prediction
 
         """
 
-        data_handler = DataHandler(yf_ticker, period="5d", interval="1h")
+        data_handler = DataHandler(yf_ticker, period="14d", interval="1h")
         df = data_handler.df
 
         available_dates = sorted(df["Date"].unique())
@@ -115,7 +115,8 @@ class TradingLTSM(nn.Module):
 
         # Scale using the SAME scaler fitted during training
         features = yesterday_df[self.feature_cols].values
-        features = self.scaler.transform(features)
+        features = scaler.transform(features)
+
 
         # Build tensor: (1, timesteps, features)
         x = torch.tensor(features, dtype=torch.float32).unsqueeze(0)

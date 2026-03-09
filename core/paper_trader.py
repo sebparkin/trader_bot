@@ -1,35 +1,46 @@
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
-from data_handler import DataHandler
-from trading_lstm import TradingLTSM
+from alpaca.trading.enums import OrderSide
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockLatestQuoteRequest
+import schedule, time
+from datetime import timezone, datetime
+import pytz
+from core.trading_lstm import TradingLTSM
 
+ET = pytz.timezone("America/New_York")
 
 class PaperTrader:
-    def __init__(self, model: TradingLTSM, data_handler: DataHandler, ticker="AAPL"):
+    def __init__(self, model: TradingLTSM, ticker="AAPL", cash_fraction = 0.2, threshold = 0.6):
 
         self.model = model
-        self.data_handler = data_handler
         self.ticker = ticker
+        self.cash_fraction = cash_fraction
+        self.threshold = threshold
         self.trading_client = TradingClient(
             "PKSAFILHAEV7QE23XVUGLI4DU3",
             "FPJtCknW6dzYPjShCGijomw7n6Ggaj6CxizfWeKKEMza",
             paper=True,
         )
+        self.stock_client = StockHistoricalDataClient(
+            "PKSAFILHAEV7QE23XVUGLI4DU3",
+            "FPJtCknW6dzYPjShCGijomw7n6Ggaj6CxizfWeKKEMza"
+        )
 
-        account = self.trading_client.get_account
+        account = self.trading_client.get_account()
         print(f"Cash: ${account.cash}")
         print(f"Portfolio Value: ${account.portfolio_value}")
 
     def get_position(self):
         try:
-            pos = self.api.get_position(self.ticker)
-            return int(pos.qty)
+            pos = self.trading_client.get_open_position(self.ticker)
+            return pos.qty
         except:
             return 0  # No position
 
     def open_position(self):
         """Runs at market open, predict and place order"""
-        clock = self.api.get_clock()
+        clock = self.trading_client.get_clock()
         if not clock.is_open:
             print("Market is closed — skipping")
             return
@@ -42,8 +53,153 @@ class PaperTrader:
         except ValueError as e:
             print(f"Prediction error: {e}")
             return
+        
+        account = self.trading_client.get_account()
+        
+        request_param = StockLatestQuoteRequest(symbol_or_symbols=self.ticker)
+        latest = self.stock_client.get_stock_latest_quote(request_param)
+        price = float(latest[self.ticker].ask_price)
+        cash = float(account.cash)
+        portfolio = float(account.portfolio_value)
 
-    def execute_trade(self):
-        clock = self.trading_client.get_clock()
-        if not clock.is_open:
-            print
+        if self.get_position() != 0:
+            print("Already in a position — skipping open")
+            return
+
+        qty = round(cash * self.cash_fraction / price) # Trading amount in dollars
+
+        if pred > self.threshold:
+
+            order_data = MarketOrderRequest(
+                symbol=self.ticker,
+                qty=qty,
+                side=OrderSide.BUY,
+                type='market',
+                time_in_force='day'
+            )
+            self.trading_client.submit_order(order_data)
+            self.position = 'long'
+            print(f'BUY ${qty} shares of {self.ticker} @ ~${price:.2f}')
+        
+        elif pred < (1 - self.threshold):
+
+            order_data = MarketOrderRequest(
+                symbol=self.ticker,
+                qty=qty,
+                side=OrderSide.SELL,
+                type='market',
+                time_in_force='day'
+            )
+            self.trading_client.submit_order(order_data)
+            self.position = 'long'
+            print(f'SHORT ${qty} shares of {self.ticker} @ ~${price:.2f}')
+
+        else:
+            self.position = None
+            print(f"No trade - confidence within neutral zone")
+
+    def close_position(self):
+        """Called before market close — flatten everything"""
+        print(f"\\n{'='*50}")
+        print(f"CLOSE — {datetime.now(ET).strftime('%Y-%m-%d %H:%M:%S ET')}")
+        print(f"{'='*50}")
+
+        current_qty = self.get_position()
+
+        if current_qty == 0:
+            print("No open position to close")
+            return
+
+        try:
+            self.trading_client.close_all_positions()
+
+            # Log P&L
+            account   = self.trading_client.get_account()
+            portfolio = float(account.portfolio_value)
+            equity    = float(account.equity)
+            last_eq   = float(account.last_equity)
+            day_pl    = equity - last_eq
+
+            print(f"All positions closed")
+            print(f"Portfolio value: ${portfolio:.2f}")
+            print(f"Day P&L:         ${day_pl:+.2f}")
+            self.position = None
+
+        except Exception as e:
+            print(f"Error closing positions: {e}")
+
+    def run(self):
+        print("Bot started")
+        print(f"Ticker: {self.ticker} | Threshold: {self.threshold} | Cash fraction: {self.cash_fraction}")
+
+        # Market open — 9:31 AM ET (1 min after open to let price stabilise)
+        for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']:
+            getattr(schedule.every(), day).at("14:31").do(self.open_position)   # 14:31 UTC = 9:31 ET
+            getattr(schedule.every(), day).at("20:45").do(self.close_position)  # 3:45 PM ET
+
+        # Run open immediately on start if market is open
+        clock = self.api.get_clock()
+        if clock.is_open:
+            print("Market is currently open — running open_position now")
+            self.open_position()
+
+        while True:
+            schedule.run_pending()
+            time.sleep(30)
+
+
+    def test_trade(self, direction):
+
+        account = self.trading_client.get_account()
+
+        request_param = StockLatestQuoteRequest(symbol_or_symbols=self.ticker)
+        latest = self.stock_client.get_stock_latest_quote(request_param)
+        price = float(latest[self.ticker].ask_price)
+        cash = float(account.cash)
+        portfolio = float(account.portfolio_value)
+
+        if self.get_position() != 0:
+            print("Already in a position — skipping open")
+            return
+
+        qty = round(cash * self.cash_fraction / price) # Trading amount in dollars
+
+        side = OrderSide.BUY if direction == "buy" else OrderSide.SELL
+        order_data = MarketOrderRequest(
+            symbol=self.ticker,
+            qty=qty,
+            side=side,
+            type='market',
+            time_in_force='day'
+        )
+        self.trading_client.submit_order(order_data)
+        self.position = 'long'
+        print(f'BUY ${qty} shares of {self.ticker} @ ~${price:.2f}')
+
+    
+    def test_sell(self):
+        
+        account = self.trading_client.get_account()
+
+        request_param = StockLatestQuoteRequest(symbol_or_symbols=self.ticker)
+        latest = self.stock_client.get_stock_latest_quote(request_param)
+        price = float(latest[self.ticker].ask_price)
+        cash = float(account.cash)
+        portfolio = float(account.portfolio_value)
+
+        if self.get_position() != 0:
+            print("Already in a position — skipping open")
+            return
+
+        qty = round(cash * self.cash_fraction / price) # Trading amount in dollars
+
+        order_data = MarketOrderRequest(
+            symbol=self.ticker,
+            notional=qty,
+            side=OrderSide.SELL,
+            type='market',
+            time_in_force='day'
+        )
+        self.trading_client.submit_order(order_data)
+        self.position = 'long'
+        print(f'BUY ${qty} shares of {self.ticker} @ ~${price:.2f}')
