@@ -187,6 +187,22 @@ for ticker in tickers:
 
     st.divider()
 
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button(f"▶️ Open {ticker} Position", 
+                     key=f"open_{ticker}", 
+                     use_container_width=True):
+            result = traders[ticker].open_position()
+            st.info(result)
+    with c2:
+        if st.button(f"⏹ Close {ticker} Position", 
+                     key=f"close_{ticker}", 
+                     use_container_width=True):
+            result = traders[ticker].close_position()
+            st.info(result)
+
+    st.divider()
+
 # ---- Global controls ----
 st.subheader("Global Controls")
 g1, g2 = st.columns(2)
