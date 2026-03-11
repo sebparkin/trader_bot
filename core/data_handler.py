@@ -102,7 +102,7 @@ class DataHandler:
         df["MonthSin"] = np.sin(2 * np.pi * df["Month"] / 12)
         df["MonthCos"] = np.cos(2 * np.pi * df["Month"] / 12)
 
-        #df.dropna(inplace=True)
+        # df.dropna(inplace=True)
         return df
 
     def _compute_rsi(self, series, period=14):

@@ -11,8 +11,9 @@ from core.trading_lstm import TradingLTSM
 
 ET = pytz.timezone("America/New_York")
 
+
 class PaperTrader:
-    def __init__(self, model: TradingLTSM, ticker="AAPL", cash_fraction = 0.2, threshold = 0.6):
+    def __init__(self, model: TradingLTSM, ticker="AAPL", cash_fraction=0.2, threshold=0.6):
 
         self.model = model
         self.ticker = ticker
@@ -24,8 +25,7 @@ class PaperTrader:
             paper=True,
         )
         self.stock_client = StockHistoricalDataClient(
-            "PKSAFILHAEV7QE23XVUGLI4DU3",
-            "FPJtCknW6dzYPjShCGijomw7n6Ggaj6CxizfWeKKEMza"
+            "PKSAFILHAEV7QE23XVUGLI4DU3", "FPJtCknW6dzYPjShCGijomw7n6Ggaj6CxizfWeKKEMza"
         )
 
         account = self.trading_client.get_account()
@@ -48,15 +48,13 @@ class PaperTrader:
 
         # Get prediction from yesterday's data
         try:
-            pred, data_date = self.model.get_yesterdays_prediction(
-                self.ticker, scaler
-            )
+            pred, data_date = self.model.get_yesterdays_prediction(self.ticker, scaler)
         except ValueError as e:
             print(f"Prediction error: {e}")
             return
-        
+
         account = self.trading_client.get_account()
-        
+
         request_param = StockLatestQuoteRequest(symbol_or_symbols=self.ticker)
         latest = self.stock_client.get_stock_latest_quote(request_param)
         price = float(latest[self.ticker].ask_price)
@@ -67,7 +65,7 @@ class PaperTrader:
             print("Already in a position — skipping open")
             return
 
-        qty = round(cash * self.cash_fraction / price) # Trading amount in dollars
+        qty = round(cash * self.cash_fraction / price)  # Trading amount in dollars
 
         if pred > self.threshold:
 
@@ -75,25 +73,25 @@ class PaperTrader:
                 symbol=self.ticker,
                 qty=qty,
                 side=OrderSide.BUY,
-                type='market',
-                time_in_force='day'
+                type="market",
+                time_in_force="day",
             )
             self.trading_client.submit_order(order_data)
-            self.position = 'long'
-            print(f'BUY ${qty} shares of {self.ticker} @ ~${price:.2f}')
-        
+            self.position = "long"
+            print(f"BUY ${qty} shares of {self.ticker} @ ~${price:.2f}")
+
         elif pred < (1 - self.threshold):
 
             order_data = MarketOrderRequest(
                 symbol=self.ticker,
                 qty=qty,
                 side=OrderSide.SELL,
-                type='market',
-                time_in_force='day'
+                type="market",
+                time_in_force="day",
             )
             self.trading_client.submit_order(order_data)
-            self.position = 'short'
-            print(f'SHORT ${qty} shares of {self.ticker} @ ~${price:.2f}')
+            self.position = "short"
+            print(f"SHORT ${qty} shares of {self.ticker} @ ~${price:.2f}")
 
         else:
             self.position = None
@@ -115,11 +113,11 @@ class PaperTrader:
             self.trading_client.close_all_positions()
 
             # Log P&L
-            account   = self.trading_client.get_account()
+            account = self.trading_client.get_account()
             portfolio = float(account.portfolio_value)
-            equity    = float(account.equity)
-            last_eq   = float(account.last_equity)
-            day_pl    = equity - last_eq
+            equity = float(account.equity)
+            last_eq = float(account.last_equity)
+            day_pl = equity - last_eq
 
             print(f"All positions closed")
             print(f"Portfolio value: ${portfolio:.2f}")
@@ -129,26 +127,26 @@ class PaperTrader:
         except Exception as e:
             print(f"Error closing positions: {e}")
 
-
     def get_recent_orders(self):
 
-        order_request = GetOrdersRequest(
-            status='all',
-            limit=20,
-            symbols=[self.ticker]
-        )
+        order_request = GetOrdersRequest(status="all", limit=20, symbols=[self.ticker])
 
         orders = self.trading_client.get_orders(filter=order_request)
 
         if not orders:
             return pd.DataFrame()
-        return pd.DataFrame([{
-            'Time'  : pd.to_datetime(o.submitted_at).strftime('%Y-%m-%d %H:%M'),
-            'Symbol': o.symbol,
-            'Side'  : o.side.upper(),
-            'Amount': f"${float(o.notional):.2f}" if o.notional else f"{o.qty} shares",
-            'Status': o.status
-        } for o in orders])
+        return pd.DataFrame(
+            [
+                {
+                    "Time": pd.to_datetime(o.submitted_at).strftime("%Y-%m-%d %H:%M"),
+                    "Symbol": o.symbol,
+                    "Side": o.side.upper(),
+                    "Amount": (f"${float(o.notional):.2f}" if o.notional else f"{o.qty} shares"),
+                    "Status": o.status,
+                }
+                for o in orders
+            ]
+        )
 
     def test_trade(self, direction):
 
@@ -164,23 +162,18 @@ class PaperTrader:
             print("Already in a position — skipping open")
             return
 
-        qty = round(cash * self.cash_fraction / price) # Trading amount in dollars
+        qty = round(cash * self.cash_fraction / price)  # Trading amount in dollars
 
         side = OrderSide.BUY if direction == "buy" else OrderSide.SELL
         order_data = MarketOrderRequest(
-            symbol=self.ticker,
-            qty=qty,
-            side=side,
-            type='market',
-            time_in_force='day'
+            symbol=self.ticker, qty=qty, side=side, type="market", time_in_force="day"
         )
         self.trading_client.submit_order(order_data)
-        self.position = 'long'
-        print(f'BUY ${qty} shares of {self.ticker} @ ~${price:.2f}')
+        self.position = "long"
+        print(f"BUY ${qty} shares of {self.ticker} @ ~${price:.2f}")
 
-    
     def test_sell(self):
-        
+
         account = self.trading_client.get_account()
 
         request_param = StockLatestQuoteRequest(symbol_or_symbols=self.ticker)
@@ -193,15 +186,15 @@ class PaperTrader:
             print("Already in a position — skipping open")
             return
 
-        qty = round(cash * self.cash_fraction / price) # Trading amount in dollars
+        qty = round(cash * self.cash_fraction / price)  # Trading amount in dollars
 
         order_data = MarketOrderRequest(
             symbol=self.ticker,
             notional=qty,
             side=OrderSide.SELL,
-            type='market',
-            time_in_force='day'
+            type="market",
+            time_in_force="day",
         )
         self.trading_client.submit_order(order_data)
-        self.position = 'long'
-        print(f'BUY ${qty} shares of {self.ticker} @ ~${price:.2f}')
+        self.position = "long"
+        print(f"BUY ${qty} shares of {self.ticker} @ ~${price:.2f}")

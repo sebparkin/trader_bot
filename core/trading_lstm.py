@@ -20,9 +20,7 @@ class TradingLTSM(nn.Module):
         self.feature_cols = feature_cols
         input_size = len(self.feature_cols)
         print(f"Input size: {input_size}")
-        self.lstm = nn.LSTM(
-            input_size, hidden_size, num_layers, batch_first=True, dropout=dropout
-        )
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, output_size)
         self.sigmoid = nn.Sigmoid()
         self.dropout = nn.Dropout(dropout)
@@ -109,14 +107,11 @@ class TradingLTSM(nn.Module):
         yesterday_df = df[df["Date"] == yesterday].sort_values("Datetime")
 
         if len(yesterday_df) < 6:
-            raise ValueError(
-                f"Too few bars for {yesterday} ({len(yesterday_df)}) — skipping"
-            )
+            raise ValueError(f"Too few bars for {yesterday} ({len(yesterday_df)}) — skipping")
 
         # Scale using the SAME scaler fitted during training
         features = yesterday_df[self.feature_cols].values
         features = scaler.transform(features)
-
 
         # Build tensor: (1, timesteps, features)
         x = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
