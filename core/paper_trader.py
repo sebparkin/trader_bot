@@ -48,7 +48,7 @@ class PaperTrader:
         # Get prediction from yesterday's data
         try:
             pred, data_date = self.model.get_yesterdays_prediction(
-                self.ticker, self.model, scaler, self.feature_cols
+                self.ticker, self.model, scaler
             )
         except ValueError as e:
             print(f"Prediction error: {e}")
