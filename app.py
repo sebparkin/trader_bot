@@ -65,7 +65,7 @@ def get_account_stats():
 
 def get_position(ticker):
     try:
-        pos = trading_client.get_position(ticker)
+        pos = trading_client.get_open_position(ticker)
         return {
             'qty'           : pos.qty,
             'entry_price'   : float(pos.avg_entry_price),
@@ -85,17 +85,6 @@ def get_portfolio_history():
     })
     return df
 
-def get_recent_orders():
-    orders = trading_client.get_orders(status='all', limit=20)
-    if not orders:
-        return pd.DataFrame()
-    return pd.DataFrame([{
-        'Time'  : pd.to_datetime(o.submitted_at).strftime('%Y-%m-%d %H:%M'),
-        'Symbol': o.symbol,
-        'Side'  : o.side.upper(),
-        'Amount': f"${float(o.notional):.2f}" if o.notional else f"{o.qty} shares",
-        'Status': o.status
-    } for o in orders])
 
 def get_prediction_now(ticker):
     try:
@@ -172,16 +161,9 @@ for ticker in tickers:
 
     # Recent orders for this ticker
     with st.expander(f"Recent {ticker} Orders"):
-        all_orders = trading_client.get_orders()
-        ticker_orders = [o for o in all_orders if o.symbol == ticker]
-        if ticker_orders:
-            orders_df = pd.DataFrame([{
-                'Time'  : pd.to_datetime(o.submitted_at).strftime('%Y-%m-%d %H:%M'),
-                'Side'  : o.side.upper(),
-                'Amount': f"${float(o.notional):.2f}" if o.notional else f"{o.qty} shares",
-                'Status': o.status
-            } for o in ticker_orders])
-            st.dataframe(orders_df, width='stretch')
+        orders = traders[ticker].get_recent_orders()
+        if not orders.empty:
+            st.dataframe(orders, width='stretch')
         else:
             st.info(f"No recent orders for {ticker}")
 
@@ -198,7 +180,7 @@ for ticker in tickers:
         if st.button(f"⏹ Close {ticker} Position", 
                      key=f"close_{ticker}", 
                      use_container_width=True):
-            result = traders[ticker].close_position()
+            result = trading_client.close_position(ticker)
             st.info(result)
 
     st.divider()
@@ -218,7 +200,6 @@ with g2:
 st.caption("Auto-refreshes every 30 minutes")
 time.sleep(1800)
 st.rerun()
-
 
 
 def bot_schedule_loop():

@@ -1,8 +1,9 @@
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest
+from alpaca.trading.requests import MarketOrderRequest, GetOrdersRequest
 from alpaca.trading.enums import OrderSide
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestQuoteRequest
+import pandas as pd
 import schedule, time
 from datetime import datetime
 import pytz
@@ -128,25 +129,26 @@ class PaperTrader:
         except Exception as e:
             print(f"Error closing positions: {e}")
 
-    def run(self):
-        print("Bot started")
-        print(f"Ticker: {self.ticker} | Threshold: {self.threshold} | Cash fraction: {self.cash_fraction}")
 
-        # Market open — 9:31 AM ET (1 min after open to let price stabilise)
-        for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']:
-            getattr(schedule.every(), day).at("14:31").do(self.open_position)   # 14:31 UTC = 9:31 ET
-            getattr(schedule.every(), day).at("20:45").do(self.close_position)  # 3:45 PM ET
+    def get_recent_orders(self):
 
-        # Run open immediately on start if market is open
-        clock = self.api.get_clock()
-        if clock.is_open:
-            print("Market is currently open — running open_position now")
-            self.open_position()
+        order_request = GetOrdersRequest(
+            status='all',
+            limit=20,
+            symbols=[self.ticker]
+        )
 
-        while True:
-            schedule.run_pending()
-            time.sleep(30)
+        orders = self.trading_client.get_orders(filter=order_request)
 
+        if not orders:
+            return pd.DataFrame()
+        return pd.DataFrame([{
+            'Time'  : pd.to_datetime(o.submitted_at).strftime('%Y-%m-%d %H:%M'),
+            'Symbol': o.symbol,
+            'Side'  : o.side.upper(),
+            'Amount': f"${float(o.notional):.2f}" if o.notional else f"{o.qty} shares",
+            'Status': o.status
+        } for o in orders])
 
     def test_trade(self, direction):
 
