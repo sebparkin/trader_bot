@@ -38,7 +38,7 @@ class PaperTrader:
         except:
             return 0  # No position
 
-    def open_position(self):
+    def open_position(self, scaler):
         """Runs at market open, predict and place order"""
         clock = self.trading_client.get_clock()
         if not clock.is_open:
@@ -48,7 +48,7 @@ class PaperTrader:
         # Get prediction from yesterday's data
         try:
             pred, data_date = self.model.get_yesterdays_prediction(
-                self.ticker, self.model, self.scaler, self.feature_cols
+                self.ticker, self.model, scaler, self.feature_cols
             )
         except ValueError as e:
             print(f"Prediction error: {e}")
@@ -91,7 +91,7 @@ class PaperTrader:
                 time_in_force='day'
             )
             self.trading_client.submit_order(order_data)
-            self.position = 'long'
+            self.position = 'short'
             print(f'SHORT ${qty} shares of {self.ticker} @ ~${price:.2f}')
 
         else:

@@ -192,7 +192,7 @@ for ticker in tickers:
         if st.button(f"▶️ Open {ticker} Position", 
                      key=f"open_{ticker}", 
                      use_container_width=True):
-            result = traders[ticker].open_position()
+            result = traders[ticker].open_position(scalers[ticker])
             st.info(result)
     with c2:
         if st.button(f"⏹ Close {ticker} Position", 
@@ -224,8 +224,8 @@ st.rerun()
 def bot_schedule_loop():
 
     for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']:
-        getattr(schedule.every(), day).at("14:31").do(traders["AAPL"].open_position())
-        getattr(schedule.every(), day).at("14:31").do(traders["MSFT"].open_position())
+        getattr(schedule.every(), day).at("14:31").do(traders["AAPL"].open_position(scalers["AAPL"]))
+        getattr(schedule.every(), day).at("14:31").do(traders["MSFT"].open_position(scalers["MSFT"]))
         getattr(schedule.every(), day).at("20:45").do(traders["AAPL"].close_position())
 
     while True:
