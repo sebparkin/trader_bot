@@ -7,6 +7,7 @@ from datetime import datetime
 import plotly.graph_objects as go
 import time
 import schedule
+import threading
 from alpaca.broker import BrokerClient
 from core.data_handler import DataHandler
 from core.paper_trader import PaperTrader
@@ -17,6 +18,82 @@ ET = pytz.timezone("America/New_York")
 
 st.set_page_config(page_title="Trading Bot Dashboard", page_icon="🚀", layout="wide")
 
+def bot_schedule_loop():
+
+    print(f"Bot schedule started at {datetime.now(ET).strftime('%H:%M:%S ET')}")
+
+    def open_all():
+        print(f"Opening positions at {datetime.now(ET).strftime('%H:%M:%S ET')}")
+        try:
+            traders["AAPL"].open_position(scalers["AAPL"])
+        except Exception as e:
+            print(f"AAPL open error: {e}")
+        try:
+            traders["MSFT"].open_position(scalers["MSFT"])
+        except Exception as e:
+            print(f"MSFT open error: {e}")
+
+    def close_all():
+        print(f"Closing positions at {datetime.now(ET).strftime('%H:%M:%S ET')}")
+        try:
+            traders["AAPL"].close_position()
+        except Exception as e:
+            print(f"AAPL close error: {e}")
+        try:
+            traders["MSFT"].close_position()
+        except Exception as e:
+            print(f"MSFT close error: {e}")
+
+    # Explicit per-day scheduling — no loop, no closure bug
+    schedule.every().monday.at("14:31").do(open_all)
+    schedule.every().tuesday.at("14:31").do(open_all)
+    schedule.every().wednesday.at("14:31").do(open_all)
+    schedule.every().thursday.at("14:31").do(open_all)
+    schedule.every().friday.at("14:31").do(open_all)
+
+    schedule.every().monday.at("20:45").do(close_all)
+    schedule.every().tuesday.at("20:45").do(close_all)
+    schedule.every().wednesday.at("20:45").do(close_all)
+    schedule.every().thursday.at("20:45").do(close_all)
+    schedule.every().friday.at("20:45").do(close_all)
+
+    while True:
+        try:
+            # Print heartbeat every hour so you can see thread is alive
+            print(f"Bot heartbeat: {datetime.now(ET).strftime('%H:%M:%S ET')}")
+            schedule.run_pending()
+            time.sleep(300)
+        except Exception as e:
+            print(f"Schedule loop error: {e} — restarting loop")
+            time.sleep(30)  # Wait then retry rather than dying
+
+def get_bot_thread():
+    """Returns the bot thread if it exists and is alive, else None"""
+    for t in threading.enumerate():
+        if t.name == "trading_bot":
+            return t if t.is_alive() else None
+    return None
+
+def ensure_bot_running():
+    """Start bot thread if not already running"""
+    existing = get_bot_thread()
+    if existing is None:
+        print(f"Starting bot thread at {datetime.now(ET).strftime('%H:%M:%S ET')}")
+        thread = threading.Thread(
+            target = bot_schedule_loop,
+            daemon = True,
+            name   = "trading_bot"
+        )
+        thread.start()
+        time.sleep(0.5)  # Brief pause to let thread start up
+        print(f"Bot thread started — alive: {thread.is_alive()}")
+        return thread
+    else:
+        print(f"Bot thread already running — skipping start")
+        return existing
+
+# Call this near the top of your script, before any st.* calls
+ensure_bot_running()
 
 @st.cache_resource
 def load_model_and_scaler(ticker):
@@ -186,10 +263,7 @@ for ticker in tickers:
             key=f"close_{ticker}",
             use_container_width=True,
         ):
-            try:
-                result = trading_client.close_position(ticker)
-            except:
-                result = f"No open positions for {ticker}"
+            result = traders[ticker].close_position()
             st.info(result)
 
     st.divider()
@@ -205,33 +279,42 @@ with g2:
     if st.button("🔄 Refresh Dashboard", width="stretch"):
         st.rerun()
 
+
+# Check what time your server thinks it is
+print(f"Server local time: {datetime.now().strftime('%H:%M:%S')}")
+print(f"ET time:           {datetime.now(ET).strftime('%H:%M:%S')}")
+
+
+# if 'bot_started' not in st.session_state:
+#     st.session_state['bot_started'] = True
+#     thread = threading.Thread(target=bot_schedule_loop, daemon=True, name="trading_bot")
+#     thread.start()
+#     print(f"Bot thread started: {thread.name} | Alive: {thread.is_alive()}")
+
+
+# # Verify thread is still alive on each rerun
+# threads = {t.name: t for t in threading.enumerate()}
+# if "trading_bot" in threads:
+#     st.sidebar.success("🟢 Bot thread running")
+# else:
+#     st.sidebar.error("🔴 Bot thread not running — restart app")
+
+with st.expander("Bot Diagnostics"):
+    st.write(f"Server time (local): {datetime.now().strftime('%H:%M:%S')}")
+    st.write(f"Server time (ET):    {datetime.now(ET).strftime('%H:%M:%S')}")
+    st.caption("Scheduled Jobs")
+    if schedule.jobs:
+        for job in schedule.jobs:
+            # Extract the useful parts — day, time and function name
+            day  = str(job.next_run.strftime('%A'))   # e.g. "Monday"
+            time_str = str(job.next_run.strftime('%H:%M UTC'))
+            func_name = job.job_func.__name__ if hasattr(job.job_func, '__name__') else str(job.job_func)
+            st.write(f"• {day} {time_str} → {func_name}")
+    else:
+        st.warning("No jobs scheduled")
+
+
 # ---- Auto refresh ----
 st.caption("Auto-refreshes every 30 minutes")
 time.sleep(1800)
 st.rerun()
-
-
-def bot_schedule_loop():
-
-    for day in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
-        getattr(schedule.every(), day).at("14:31").do(
-            lambda: traders["AAPL"].open_position(scalers["AAPL"])
-        )
-        getattr(schedule.every(), day).at("14:31").do(
-            lambda: traders["MSFT"].open_position(scalers["MSFT"])
-        )
-        getattr(schedule.every(), day).at("20:45").do(
-            lambda: traders["AAPL"].close_position()
-        )
-
-    while True:
-        schedule.run_pending()
-        time.sleep(30)
-
-
-# Start bot in background thread when Streamlit loads
-# st.session_state ensures it only starts once
-if "bot_started" not in st.session_state:
-    thread = threading.Thread(target=bot_schedule_loop, daemon=True)
-    thread.start()
-    st.session_state["bot_started"] = True

@@ -110,7 +110,7 @@ class PaperTrader:
             return
 
         try:
-            self.trading_client.close_all_positions()
+            self.trading_client.close_position(self.ticker)
 
             # Log P&L
             account = self.trading_client.get_account()
