@@ -45,17 +45,17 @@ def bot_schedule_loop():
             print(f"MSFT close error: {e}")
 
     # Explicit per-day scheduling — no loop, no closure bug
-    schedule.every().monday.at("14:31").do(open_all)
-    schedule.every().tuesday.at("14:31").do(open_all)
-    schedule.every().wednesday.at("14:31").do(open_all)
-    schedule.every().thursday.at("14:31").do(open_all)
-    schedule.every().friday.at("14:31").do(open_all)
+    schedule.every().monday.at("13:31").do(open_all)
+    schedule.every().tuesday.at("13:31").do(open_all)
+    schedule.every().wednesday.at("13:31").do(open_all)
+    schedule.every().thursday.at("13:31").do(open_all)
+    schedule.every().friday.at("13:31").do(open_all)
 
-    schedule.every().monday.at("20:45").do(close_all)
-    schedule.every().tuesday.at("20:45").do(close_all)
-    schedule.every().wednesday.at("20:45").do(close_all)
-    schedule.every().thursday.at("20:45").do(close_all)
-    schedule.every().friday.at("20:45").do(close_all)
+    schedule.every().monday.at("19:45").do(close_all)
+    schedule.every().tuesday.at("19:45").do(close_all)
+    schedule.every().wednesday.at("19:45").do(close_all)
+    schedule.every().thursday.at("19:45").do(close_all)
+    schedule.every().friday.at("19:45").do(close_all)
 
     while True:
         try:
