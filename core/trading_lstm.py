@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import pytz
+from datetime import datetime, timedelta
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
@@ -100,14 +102,30 @@ class TradingLTSM(nn.Module):
 
         available_dates = sorted(df["Date"].unique())
 
+        ET = pytz.timezone("America/New_York")
+        now_et = datetime.now(ET)
+        today_et = now_et.date()
+
+        # Sunday
+        if today_et.weekday() == 6:
+            yesterday_et = today_et - timedelta(days=2)
+        # Monday
+        elif today_et.weekday() == 0: 
+            yesterday_et = today_et - timedelta(days=3)
+        else:
+            yesterday_et = today_et - timedelta(days=1)
+
         if len(available_dates) < 2:
             raise ValueError("Not enough data — need at least 2 days")
+        
+        if yesterday_et not in available_dates:
+            print(f"Warning — {yesterday_et} not in data, falling back to {available_dates[-1]}")
+            yesterday_et = available_dates[-1]
 
-        yesterday = available_dates[-2]
-        yesterday_df = df[df["Date"] == yesterday].sort_values("Datetime")
+        yesterday_df = df[df["Date"] == yesterday_et].sort_values("Datetime")
 
         if len(yesterday_df) < 6:
-            raise ValueError(f"Too few bars for {yesterday} ({len(yesterday_df)}) — skipping")
+            raise ValueError(f"Too few bars for {yesterday_et} ({len(yesterday_df)}) — skipping")
 
         # Scale using the SAME scaler fitted during training
         features = yesterday_df[self.feature_cols].values
@@ -120,4 +138,4 @@ class TradingLTSM(nn.Module):
         with torch.no_grad():
             pred = self(x).squeeze().item()
 
-        return pred, yesterday
+        return pred, yesterday_et
