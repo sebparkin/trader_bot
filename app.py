@@ -201,7 +201,20 @@ fig.add_trace(
         line=dict(color="#00C805"),
     )
 )
-fig.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0))
+
+# Calculate y range with 10% padding around actual values
+y_min = history_df["Value"].min()
+y_max = history_df["Value"].max()
+y_range = y_max - y_min
+padding = y_range * 0.1 if y_range > 0 else y_max * 0.05  # fallback if flat
+
+fig.update_layout(height=300, 
+                  margin=dict(l=0, r=0, t=0, b=0),
+                  yaxis = dict(
+                    range = [y_min - padding, y_max + padding],
+                    tickprefix = "$",
+                    tickformat = ",.0f"
+                  ))
 st.plotly_chart(fig, width="stretch")
 
 st.divider()
