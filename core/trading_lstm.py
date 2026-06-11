@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
 from core.data_handler import DataHandler
+from core.get_sentiments import update_sentiment
 
 
 class TradingLTSM(nn.Module):
@@ -97,6 +98,7 @@ class TradingLTSM(nn.Module):
 
         """
 
+        update_sentiment(yf_ticker)
         data_handler = DataHandler(yf_ticker, period="14d", interval="1h")
         df = data_handler.df
 

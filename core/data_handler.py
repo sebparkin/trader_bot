@@ -1,3 +1,4 @@
+import os
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -102,7 +103,33 @@ class DataHandler:
         df["MonthSin"] = np.sin(2 * np.pi * df["Month"] / 12)
         df["MonthCos"] = np.cos(2 * np.pi * df["Month"] / 12)
 
+        df = self._add_sentiment(df)
+
         # df.dropna(inplace=True)
+        return df
+
+    def _add_sentiment(self, df):
+        sentiment_path = os.path.join(
+            os.path.dirname(__file__), "..", "data", "sentiment", f"sentiment_{self.ticker}.csv"
+        )
+        if not os.path.exists(sentiment_path):
+            print(f"Warning: no sentiment file found for {self.ticker} — sentiment columns will be NaN")
+            for col in ["SentimentMean", "SentimentWeighted", "SentimentRolling5", "SentimentDelta", "ArticleCount"]:
+                df[col] = np.nan
+            return df
+
+        sentiment_df = pd.read_csv(sentiment_path)
+        sentiment_df["Date"] = pd.to_datetime(sentiment_df["Date"]).dt.date
+
+        sentiment_df = sentiment_df.sort_values("Date")
+        sentiment_df["SentimentRolling5"] = sentiment_df["SentimentMean"].rolling(5, min_periods=1).mean()
+        sentiment_df["SentimentDelta"] = sentiment_df["SentimentMean"].diff()
+
+        cols = ["Date", "SentimentMean", "SentimentWeighted", "SentimentRolling5", "SentimentDelta", "ArticleCount"]
+        df = df.merge(sentiment_df[cols], on="Date", how="left")
+        df[["SentimentMean", "SentimentWeighted", "SentimentRolling5", "SentimentDelta", "ArticleCount"]] = (
+            df[["SentimentMean", "SentimentWeighted", "SentimentRolling5", "SentimentDelta", "ArticleCount"]].ffill()
+        )
         return df
 
     def _compute_rsi(self, series, period=14):

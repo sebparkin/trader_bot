@@ -1,5 +1,10 @@
-ALPACA_KEY = "PKSAFILHAEV7QE23XVUGLI4DU3"
-ALPACA_SECRET = "PKSAFILHAEV7QE23XVUGLI4DU3"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ALPACA_KEY = os.environ["ALPACA_KEY"]
+ALPACA_SECRET = os.environ["ALPACA_SECRET"]
 HIDDEN_SIZE = 64
 NUM_LAYERS = 3
 DROPOUT = 0.15
@@ -60,6 +65,11 @@ FEATURES = [
     "DoWCos",
     "MonthSin",
     "MonthCos",
+    "SentimentMean",
+    "SentimentWeighted",
+    "SentimentRolling5",
+    "SentimentDelta",
+    "ArticleCount",
 ]
 
 

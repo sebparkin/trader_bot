@@ -8,6 +8,7 @@ import schedule, time
 from datetime import datetime
 import pytz
 from core.trading_lstm import TradingLTSM
+from core.constants import ALPACA_KEY, ALPACA_SECRET
 
 ET = pytz.timezone("America/New_York")
 
@@ -19,14 +20,8 @@ class PaperTrader:
         self.ticker = ticker
         self.cash_fraction = cash_fraction
         self.threshold = threshold
-        self.trading_client = TradingClient(
-            "PKSAFILHAEV7QE23XVUGLI4DU3",
-            "FPJtCknW6dzYPjShCGijomw7n6Ggaj6CxizfWeKKEMza",
-            paper=True,
-        )
-        self.stock_client = StockHistoricalDataClient(
-            "PKSAFILHAEV7QE23XVUGLI4DU3", "FPJtCknW6dzYPjShCGijomw7n6Ggaj6CxizfWeKKEMza"
-        )
+        self.trading_client = TradingClient(ALPACA_KEY, ALPACA_SECRET, paper=True)
+        self.stock_client = StockHistoricalDataClient(ALPACA_KEY, ALPACA_SECRET)
 
         account = self.trading_client.get_account()
         print(f"Cash: ${account.cash}")
